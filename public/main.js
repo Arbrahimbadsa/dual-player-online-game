@@ -55,3 +55,7 @@ socket.on('gameUpdates', (data) => {
     const update = `<p><b>${data.sender}: </b> clicked ${data.selected}</p>`;
     updates.innerHTML += update;
 });
+// // if more than two people in one room
+socket.on('sorry_babe', id => {
+    message.innerText = 'Sorry babe, you may try some other room. There is no roam for you here.';
+});
