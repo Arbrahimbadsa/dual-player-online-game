@@ -13,11 +13,11 @@ const createButtons = (count) => {
         p.append(button);
     }
 }
-const setLogic = (senderId) => {
+const setLogic = (roomId) => {
     const buttons = document.getElementsByClassName('gameButton');
     for (let i = 0; i < buttons.length; i++) {
         buttons[i].addEventListener('click', () => {
-            socket.emit('updates', {sender: senderId, selected: i + 1});
+            socket.emit('updates', {roomId: roomId, selected: i + 1});
         });
     }
 }
@@ -32,30 +32,25 @@ socket.on('inviteId', id => {
     const url = `<p><b>Share your link: </b>http://localhost:5000/invite/${id}</p>`;
     box.innerHTML = url;
 });
-// now if we are connected with player two
-socket.on('player_one_got_player_two', playerTwoId => {
-    socket.emit('player_two_got_player_one', playerTwoId);
-});
-// game starts for player two
-socket.on('game_starts_for_player_two', playerOneId => {
-    message.innerText = `Connected with ${playerOneId}`;
-    socket.emit('player_one_got_player_two', playerOneId);
-    createButtons(10);
-    setLogic(playerOneId);
-});
-// game starts for player one
-socket.on('game_starts_for_player_one', playerTwoId => {
-    message.innerText = `Connected with ${playerTwoId}`;
+// game starts
+socket.on('gameStarts', data => {
+    message.innerText = `Connected with ${data.roomId === socket.id ? data.playerId : data.roomId}`;
     box.innerText = '';
     createButtons(10);
-    setLogic(playerTwoId);
+    setLogic(data.roomId);
 });
 // game updates
 socket.on('gameUpdates', (data) => {
-    const update = `<p><b>${data.sender}: </b> clicked ${data.selected}</p>`;
-    updates.innerHTML += update;
+    if (data.sender !== socket.id) {
+        const update = `<p><b>${data.sender}: </b> clicked ${data.selected}</p>`;
+        updates.innerHTML += update;
+    }
 });
-// // if more than two people in one room
+// if more than two people in one room
 socket.on('sorry_babe', id => {
     message.innerText = 'Sorry babe, you may try some other room. There is no roam for you here.';
+});
+// if something goes wrong
+socket.on('error', error => {
+    message.innerText = error;
 });

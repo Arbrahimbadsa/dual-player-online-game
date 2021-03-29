@@ -25,42 +25,36 @@ app.get('/invite/:id', (req, res) => {
     const inviteId = req.params.id;
     res.sendFile(path.join(__dirname, 'views/main.html'));
 });
-let playerAllowed = true;
 // on a new connection
 io.on('connection', (socket) => {
     socket.on('firstEntry', data => {
         const idExists = data.split('/').length > 4;
         if (idExists) {
-            const id = data.split('/')[data.split('/').length - 1]; // player one id.
-            // we emit to player one that we have got player two.
-            // this socket.id is the id of the new user who got the link from player one.
-            // emit this player id
-            // however only two players in a room is allowed
-            if (playerAllowed) {
-                // let me in..
-                socket.to(id).emit('player_one_got_player_two', socket.id);
-            } else {
-                // sorry babe, you may try some other room
-                socket.emit('sorry_babe', socket.id);
-            }
+            try {
+                // this is the room name or room id which will be used to create communicaion
+                // with two players
+                const id = data.split('/')[data.split('/').length - 1];
+                const maximumPlayers = io.sockets.adapter.rooms.get(id).size;
+                // let's allow two players in a room.
+                if (maximumPlayers < 2) {
+                    // add the new player in the room.
+                    socket.join(id);
+                    // emit the room id.
+                    io.to(id).emit('gameStarts', {playerId: socket.id, roomId: id});
+                } else {
+                    socket.emit('sorry_babe', socket.id);
+                }
+            } catch (error) {
+                socket.emit('error', 'Ok kiddo!');
+            }  
         } else {
             // no id exists means this is the first player.
             // emit the first player id.
             socket.emit('inviteId', socket.id);
-            playerAllowed = true;
         }
     });
-    socket.on('player_two_got_player_one', playerTwoId => {
-        // let player two know that now it's time to play.
-        socket.to(playerTwoId).emit('game_starts_for_player_two', socket.id);
-        playerAllowed = false;
-    });
-    socket.on('player_one_got_player_two', playerOneId => {
-        // let player one know game has started for player two and prepare player first two start
-        socket.to(playerOneId).emit('game_starts_for_player_one', socket.id);
-    });
     socket.on('updates', data => {
-        io.to(data.sender).emit('gameUpdates', {sender: socket.id, selected: data.selected});
+        io.to(data.roomId).emit('gameUpdates', {sender: socket.id, selected: data.selected});
     });
 });
 
